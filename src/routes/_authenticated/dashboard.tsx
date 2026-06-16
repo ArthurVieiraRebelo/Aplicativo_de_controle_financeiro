@@ -23,6 +23,50 @@ type Tx = {
   categories?: { name: string; color: string } | null;
 };
 
+const tooltipBox = "rounded-xl border border-border bg-card shadow-lg px-3 py-2 text-sm min-w-[130px]";
+
+function PieTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const { name, value, payload: p } = payload[0];
+  return (
+    <div className={tooltipBox}>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: p.color }} />
+        <span className="font-medium text-foreground">{name}</span>
+      </div>
+      <div className="text-primary font-semibold">{formatBRL(value)}</div>
+    </div>
+  );
+}
+
+function BarTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className={tooltipBox}>
+      <p className="font-medium text-foreground mb-1.5">{label}</p>
+      {payload.map((p: any) => (
+        <div key={p.name} className="flex items-center justify-between gap-4">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
+            {p.name}
+          </span>
+          <span className="font-medium text-foreground">{formatBRL(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LineTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className={tooltipBox}>
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      <div className="font-semibold text-primary">{formatBRL(payload[0].value)}</div>
+    </div>
+  );
+}
+
 function Dashboard() {
   const { data: txs = [], isLoading } = useQuery({
     queryKey: ["dashboard-tx"],
@@ -89,7 +133,7 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Olá! 👋</h1>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Aqui está o resumo das suas finanças.</p>
       </div>
 
@@ -108,7 +152,7 @@ function Dashboard() {
                 <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
                   {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
                 </Pie>
-                <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12 }} />
+                <Tooltip content={<PieTooltip />} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -119,12 +163,12 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={months}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="label" stroke="var(--muted-foreground)" />
-              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${v}`} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12 }} />
+              <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={12} />
+              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} fontSize={12} />
+              <Tooltip content={<BarTooltip />} />
               <Legend />
-              <Bar dataKey="income" name="Receitas" fill="var(--chart-2)" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="expense" name="Despesas" fill="var(--chart-4)" radius={[8, 8, 0, 0]} />
+              <Bar dataKey="income" name="Receitas" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="expense" name="Despesas" fill="var(--chart-4)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -133,10 +177,10 @@ function Dashboard() {
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={balanceSeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="label" stroke="var(--muted-foreground)" />
-              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${v}`} />
-              <Tooltip formatter={(v: number) => formatBRL(v)} contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 12 }} />
-              <Line type="monotone" dataKey="saldo" stroke="var(--chart-1)" strokeWidth={3} dot={{ r: 5 }} />
+              <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={12} />
+              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} fontSize={12} />
+              <Tooltip content={<LineTooltip />} />
+              <Line type="monotone" dataKey="saldo" name="Saldo" stroke="var(--chart-1)" strokeWidth={3} dot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </Card>

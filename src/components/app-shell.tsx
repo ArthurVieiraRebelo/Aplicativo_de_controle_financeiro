@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useLocation, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -14,6 +14,7 @@ import {
   Moon,
   Menu,
   X,
+  Shield,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/lib/theme";
@@ -42,21 +43,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   const prefetchRoute = usePrefetchRoute();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState<string>("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Prefetch rotas principais ao montar
-  usePrefetchRoutes([
-    "/_authenticated/dashboard",
-    "/_authenticated/transactions",
-    "/_authenticated/categories",
-  ]);
+  usePrefetchRoutes(["/dashboard", "/transactions", "/categories"]);
 
   useEffect(() => {
     let mounted = true;
-    const getEmail = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (mounted) setEmail(data.user?.email ?? "");
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!mounted || !session?.user) return;
+      setEmail(session.user.email ?? "");
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      if (mounted) setIsAdmin(profile?.role === "admin");
     };
-    getEmail();
+    init();
     return () => { mounted = false; };
   }, []);
 
@@ -97,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="font-bold text-gradient text-lg leading-none">FinControl</div>
               <div className="text-xs text-muted-foreground mt-1">Finanças pessoais</div>
             </div>
-          </div>onMouseEnter={() => prefetchRoute(to)}
+          </div>
 
           <nav className="flex-1 space-y-1 px-3">
             {nav.map(({ to, label, icon: Icon }) => {
@@ -106,6 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={to}
                   to={to}
+                  onMouseEnter={() => prefetchRoute(to)}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
                     active
@@ -119,7 +125,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               );
             })}
           </nav>
+
           <div className="border-t border-sidebar-border p-3 space-y-2">
+            {/* Admin link — only for admins */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20 transition-colors"
+              >
+                <Shield className="h-4 w-4" />
+                Painel Admin
+              </Link>
+            )}
+
             <button
               onClick={toggle}
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground hover:bg-sidebar-accent"
@@ -127,8 +145,9 @@ export function AppShell({ children }: { children: ReactNode }) {
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               {theme === "dark" ? "Modo claro" : "Modo escuro"}
             </button>
+
             <div className="rounded-lg bg-sidebar-accent/50 p-3">
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center gap-2">
                 <OptimizedAvatar
                   initials={email.split("@")[0].slice(0, 2)}
                   email={email}
@@ -137,18 +156,17 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="truncate text-sm font-medium min-w-0">
                   {email || "…"}
                 </div>
-              div>
-                <div className="truncate text-sm font-medium">{email || "…"}</div>
               </div>
               <button
                 onClick={signOut}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
               >
                 <LogOut className="h-4 w-4" />
                 Sair
               </button>
             </div>
           </div>
+        </div>
       </aside>
 
       {open && (

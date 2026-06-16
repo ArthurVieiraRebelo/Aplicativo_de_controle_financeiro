@@ -41,12 +41,13 @@ function BudgetsPage() {
       const { data, error } = await supabase
         .from("budgets")
         .select("*, categories(name,color)")
-        .eq("month", month).eq("year", year);
+        .eq("month", month).eq("year", year)
+        .order("created_at", { ascending: true });
       if (error) throw error;
       return (data as unknown as Budget[]).map((b) => ({ ...b, amount_limit: Number(b.amount_limit) }));
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 10,
   });
 
   const { data: spentByCat = {} } = useQuery({
@@ -68,8 +69,8 @@ function BudgetsPage() {
       });
       return m;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 0,
+    gcTime: 1000 * 60 * 10,
   });
 
   const del = useMutation({
@@ -149,9 +150,9 @@ function BudgetForm({ cats, month, year, onDone }: { cats: Cat[]; month: number;
 
   const save = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Não autenticado");
-      const payload = { user_id: user.id, category_id: form.category_id, amount_limit: parseFloat(form.amount_limit), month, year };
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) throw new Error("Não autenticado");
+      const payload = { user_id: session.user.id, category_id: form.category_id, amount_limit: parseFloat(form.amount_limit), month, year };
       if (!payload.category_id) throw new Error("Selecione categoria");
       if (!Number.isFinite(payload.amount_limit) || payload.amount_limit <= 0) throw new Error("Valor inválido");
       const { error } = await supabase.from("budgets").insert(payload);

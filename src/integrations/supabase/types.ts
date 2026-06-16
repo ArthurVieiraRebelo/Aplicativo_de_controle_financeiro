@@ -127,6 +127,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string
         }
         Insert: {
@@ -134,6 +135,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
         Relationships: []
@@ -200,11 +203,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_admin_stats: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_admin_users: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      set_user_role: {
+        Args: { target_user_id: string; new_role: string }
+        Returns: undefined
+      }
     }
     Enums: {
       payment_method: "cash" | "debit" | "credit" | "pix" | "transfer" | "other"
       transaction_type: "income" | "expense"
+      user_role: "user" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -334,6 +349,7 @@ export const Constants = {
     Enums: {
       payment_method: ["cash", "debit", "credit", "pix", "transfer", "other"],
       transaction_type: ["income", "expense"],
+      user_role: ["user", "admin"],
     },
   },
 } as const
