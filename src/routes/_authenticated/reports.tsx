@@ -1,14 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, lazy, Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { formatBRL, formatDate, paymentMethodLabel } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+// Lazy load heavy icon
+const FileSpreadsheet = lazy(() => import("lucide-react").then(m => ({ default: m.FileSpreadsheet })));
 
 export const Route = createFileRoute("/_authenticated/reports")({
   head: () => ({ meta: [{ title: "Relatórios — FinControl" }] }),
@@ -29,6 +32,8 @@ function ReportsPage() {
   const { data: cats = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => (await supabase.from("categories").select("*").order("name")).data as Cat[],
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 
   const { data: txs = [] } = useQuery({
@@ -41,6 +46,8 @@ function ReportsPage() {
       if (error) throw error;
       return (data as unknown as Tx[]).map((t) => ({ ...t, amount: Number(t.amount) }));
     },
+    staleTime: 1000 * 60 * 2, // 2 minutes
+    gcTime: 1000 * 60 * 15, // 15 minutes
   });
 
   const totals = useMemo(() => {
@@ -50,6 +57,7 @@ function ReportsPage() {
   }, [txs]);
 
   const exportPDF = async () => {
+    // Lazy load jsPDF only when needed
     const { jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
     const doc = new jsPDF();
@@ -74,6 +82,7 @@ function ReportsPage() {
   };
 
   const exportXLSX = async () => {
+    // Lazy load XLSX only when needed
     const XLSX = await import("xlsx");
     const ws = XLSX.utils.json_to_sheet(txs.map((t) => ({
       Data: t.occurred_on,
@@ -121,7 +130,9 @@ function ReportsPage() {
         </div>
         <div className="flex items-end gap-2">
           <Button onClick={exportPDF} variant="outline" className="flex-1"><FileText className="h-4 w-4 mr-2" />PDF</Button>
-          <Button onClick={exportXLSX} variant="outline" className="flex-1"><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+          <Suspense fallback={<Button variant="outline" className="flex-1" disabled>Excel</Button>}>
+            <Button onClick={exportXLSX} variant="outline" className="flex-1"><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+          </Suspense>
         </div>
       </div>
 

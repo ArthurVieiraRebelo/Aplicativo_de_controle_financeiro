@@ -29,6 +29,8 @@ function GoalsPage() {
       if (error) throw error;
       return (data as Goal[]).map((g) => ({ ...g, target_amount: Number(g.target_amount), current_amount: Number(g.current_amount) }));
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
   const addAmount = useMutation({
@@ -36,12 +38,18 @@ function GoalsPage() {
       const { error } = await supabase.from("goals").update({ current_amount: current + add }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Atualizado"); qc.invalidateQueries({ queryKey: ["goals"] }); },
+    onSuccess: () => {
+      toast.success("Atualizado");
+      qc.invalidateQueries({ queryKey: ["goals"], exact: true });
+    },
   });
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("goals").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => { toast.success("Excluído"); qc.invalidateQueries({ queryKey: ["goals"] }); },
+    onSuccess: () => {
+      toast.success("Excluído");
+      qc.invalidateQueries({ queryKey: ["goals"], exact: true });
+    },
   });
 
   return (
@@ -120,7 +128,11 @@ function GoalForm({ onDone }: { onDone: () => void }) {
       const { error } = await supabase.from("goals").insert(payload);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Meta criada"); qc.invalidateQueries({ queryKey: ["goals"] }); onDone(); },
+    onSuccess: () => {
+      toast.success("Meta criada");
+      qc.invalidateQueries({ queryKey: ["goals"], exact: true });
+      onDone();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   return (

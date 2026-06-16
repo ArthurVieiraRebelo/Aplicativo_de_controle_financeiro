@@ -22,13 +22,15 @@ function ProfilePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!mounted || !user) return;
       setEmail(user.email ?? "");
       const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", user.id).maybeSingle();
-      setName(prof?.full_name ?? "");
+      if (mounted) setName(prof?.full_name ?? "");
     })();
+    return () => { mounted = false; };
   }, []);
 
   const saveProfile = async (e: React.FormEvent) => {

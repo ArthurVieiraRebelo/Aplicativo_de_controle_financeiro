@@ -18,6 +18,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "@/lib/theme";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePrefetchRoute, usePrefetchRoutes } from "@/hooks/use-prefetch-routes";
+import { OptimizedAvatar } from "./optimized-avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -37,11 +39,25 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const prefetchRoute = usePrefetchRoute();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState<string>("");
 
+  // Prefetch rotas principais ao montar
+  usePrefetchRoutes([
+    "/_authenticated/dashboard",
+    "/_authenticated/transactions",
+    "/_authenticated/categories",
+  ]);
+
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? ""));
+    let mounted = true;
+    const getEmail = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (mounted) setEmail(data.user?.email ?? "");
+    };
+    getEmail();
+    return () => { mounted = false; };
   }, []);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -81,7 +97,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div className="font-bold text-gradient text-lg leading-none">FinControl</div>
               <div className="text-xs text-muted-foreground mt-1">Finanças pessoais</div>
             </div>
-          </div>
+          </div>onMouseEnter={() => prefetchRoute(to)}
+
           <nav className="flex-1 space-y-1 px-3">
             {nav.map(({ to, label, icon: Icon }) => {
               const active = pathname === to || (to !== "/dashboard" && pathname.startsWith(to));
@@ -111,18 +128,27 @@ export function AppShell({ children }: { children: ReactNode }) {
               {theme === "dark" ? "Modo claro" : "Modo escuro"}
             </button>
             <div className="rounded-lg bg-sidebar-accent/50 p-3">
-              <div className="text-xs text-muted-foreground">Logado como</div>
-              <div className="truncate text-sm font-medium">{email || "…"}</div>
+              <div className="flex items-center gap-2 mt-2">
+                <OptimizedAvatar
+                  initials={email.split("@")[0].slice(0, 2)}
+                  email={email}
+                  className="h-6 w-6 text-xs"
+                />
+                <div className="truncate text-sm font-medium min-w-0">
+                  {email || "…"}
+                </div>
+              div>
+                <div className="truncate text-sm font-medium">{email || "…"}</div>
+              </div>
+              <button
+                onClick={signOut}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="h-4 w-4" />
+                Sair
+              </button>
             </div>
-            <button
-              onClick={signOut}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
-            >
-              <LogOut className="h-4 w-4" />
-              Sair
-            </button>
           </div>
-        </div>
       </aside>
 
       {open && (

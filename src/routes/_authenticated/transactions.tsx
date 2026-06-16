@@ -43,6 +43,8 @@ function TransactionsPage() {
       if (error) throw error;
       return data as Cat[];
     },
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 
   const { data: txs = [], isLoading } = useQuery({
@@ -55,6 +57,8 @@ function TransactionsPage() {
       if (error) throw error;
       return (data as unknown as Tx[]).map((t) => ({ ...t, amount: Number(t.amount) }));
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
   const del = useMutation({
@@ -64,8 +68,11 @@ function TransactionsPage() {
     },
     onSuccess: () => {
       toast.success("Transação excluída");
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["dashboard-tx"] });
+      // Only invalidate affected queries
+      qc.invalidateQueries({ queryKey: ["transactions"], exact: true });
+      qc.invalidateQueries({ queryKey: ["dashboard-tx"], exact: true });
+      qc.invalidateQueries({ queryKey: ["report-tx"] });
+      qc.invalidateQueries({ queryKey: ["spent"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });

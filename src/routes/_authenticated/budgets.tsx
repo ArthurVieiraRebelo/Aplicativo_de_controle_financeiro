@@ -31,6 +31,8 @@ function BudgetsPage() {
   const { data: cats = [] } = useQuery({
     queryKey: ["categories"],
     queryFn: async () => (await supabase.from("categories").select("*").order("name")).data as Cat[],
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 
   const { data: budgets = [] } = useQuery({
@@ -43,6 +45,8 @@ function BudgetsPage() {
       if (error) throw error;
       return (data as unknown as Budget[]).map((b) => ({ ...b, amount_limit: Number(b.amount_limit) }));
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
   const { data: spentByCat = {} } = useQuery({
@@ -64,11 +68,16 @@ function BudgetsPage() {
       });
       return m;
     },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
   });
 
   const del = useMutation({
     mutationFn: async (id: string) => { const { error } = await supabase.from("budgets").delete().eq("id", id); if (error) throw error; },
-    onSuccess: () => { toast.success("Excluído"); qc.invalidateQueries({ queryKey: ["budgets"] }); },
+    onSuccess: () => {
+      toast.success("Excluído");
+      qc.invalidateQueries({ queryKey: ["budgets", month, year], exact: true });
+    },
   });
 
   const years = useMemo(() => Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i), []);

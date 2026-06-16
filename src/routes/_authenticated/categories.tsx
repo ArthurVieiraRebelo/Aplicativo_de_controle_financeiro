@@ -32,6 +32,8 @@ function CategoriesPage() {
       if (error) throw error;
       return data as Cat[];
     },
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 
   const del = useMutation({
@@ -39,7 +41,12 @@ function CategoriesPage() {
       const { error } = await supabase.from("categories").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Excluída"); qc.invalidateQueries({ queryKey: ["categories"] }); },
+    onSuccess: () => {
+      toast.success("Excluída");
+      qc.invalidateQueries({ queryKey: ["categories"], exact: true });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-tx"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -120,7 +127,13 @@ function CatForm({ editing, onDone }: { editing: Cat | null; onDone: () => void 
         if (error) throw error;
       }
     },
-    onSuccess: () => { toast.success(editing ? "Atualizada" : "Criada"); qc.invalidateQueries({ queryKey: ["categories"] }); onDone(); },
+    onSuccess: () => {
+      toast.success(editing ? "Atualizada" : "Criada");
+      qc.invalidateQueries({ queryKey: ["categories"], exact: true });
+      qc.invalidateQueries({ queryKey: ["transactions"] });
+      qc.invalidateQueries({ queryKey: ["dashboard-tx"] });
+      onDone();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 

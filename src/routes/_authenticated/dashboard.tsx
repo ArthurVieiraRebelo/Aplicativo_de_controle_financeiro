@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL, monthLabel } from "@/lib/format";
 import {
@@ -37,47 +38,53 @@ function Dashboard() {
       if (error) throw error;
       return (data as unknown as Tx[]).map((t) => ({ ...t, amount: Number(t.amount) }));
     },
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour
   });
 
-  const now = new Date();
-  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const thisMonth = txs.filter((t) => t.occurred_on.startsWith(ym));
-  const income = thisMonth.filter((t) => t.type === "income").reduce((a, b) => a + b.amount, 0);
-  const expense = thisMonth.filter((t) => t.type === "expense").reduce((a, b) => a + b.amount, 0);
-  const totalIncome = txs.filter((t) => t.type === "income").reduce((a, b) => a + b.amount, 0);
-  const totalExpense = txs.filter((t) => t.type === "expense").reduce((a, b) => a + b.amount, 0);
-  const balance = totalIncome - totalExpense;
-  const savings = income - expense;
+  const { income, expense, totalIncome, totalExpense, balance, savings, thisMonth, pieData, months, balanceSeries } = useMemo(() => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const thisMonth = txs.filter((t) => t.occurred_on.startsWith(ym));
+    const income = thisMonth.filter((t) => t.type === "income").reduce((a, b) => a + b.amount, 0);
+    const expense = thisMonth.filter((t) => t.type === "expense").reduce((a, b) => a + b.amount, 0);
+    const totalIncome = txs.filter((t) => t.type === "income").reduce((a, b) => a + b.amount, 0);
+    const totalExpense = txs.filter((t) => t.type === "expense").reduce((a, b) => a + b.amount, 0);
+    const balance = totalIncome - totalExpense;
+    const savings = income - expense;
 
-  // Pie - expenses by category this month
-  const catMap = new Map<string, { name: string; value: number; color: string }>();
-  thisMonth.filter((t) => t.type === "expense").forEach((t) => {
-    const key = t.categories?.name ?? "Sem categoria";
-    const color = t.categories?.color ?? "#8b5cf6";
-    const cur = catMap.get(key);
-    if (cur) cur.value += t.amount;
-    else catMap.set(key, { name: key, value: t.amount, color });
-  });
-  const pieData = Array.from(catMap.values()).sort((a, b) => b.value - a.value);
+    // Pie - expenses by category this month
+    const catMap = new Map<string, { name: string; value: number; color: string }>();
+    thisMonth.filter((t) => t.type === "expense").forEach((t) => {
+      const key = t.categories?.name ?? "Sem categoria";
+      const color = t.categories?.color ?? "#8b5cf6";
+      const cur = catMap.get(key);
+      if (cur) cur.value += t.amount;
+      else catMap.set(key, { name: key, value: t.amount, color });
+    });
+    const pieData = Array.from(catMap.values()).sort((a, b) => b.value - a.value);
 
-  // Bars - last 6 months income/expense
-  const months: { label: string; income: number; expense: number; key: string }[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    months.push({ key: k, label: monthLabel(d.getMonth() + 1), income: 0, expense: 0 });
-  }
-  txs.forEach((t) => {
-    const k = t.occurred_on.slice(0, 7);
-    const m = months.find((mm) => mm.key === k);
-    if (!m) return;
-    if (t.type === "income") m.income += t.amount;
-    else m.expense += t.amount;
-  });
-  const balanceSeries = months.map((m, i) => ({
-    label: m.label,
-    saldo: months.slice(0, i + 1).reduce((s, mm) => s + mm.income - mm.expense, 0),
-  }));
+    // Bars - last 6 months income/expense
+    const months: { label: string; income: number; expense: number; key: string }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.push({ key: k, label: monthLabel(d.getMonth() + 1), income: 0, expense: 0 });
+    }
+    txs.forEach((t) => {
+      const k = t.occurred_on.slice(0, 7);
+      const m = months.find((mm) => mm.key === k);
+      if (!m) return;
+      if (t.type === "income") m.income += t.amount;
+      else m.expense += t.amount;
+    });
+    const balanceSeries = months.map((m, i) => ({
+      label: m.label,
+      saldo: months.slice(0, i + 1).reduce((s, mm) => s + mm.income - mm.expense, 0),
+    }));
+
+    return { income, expense, totalIncome, totalExpense, balance, savings, thisMonth, pieData, months, balanceSeries };
+  }, [txs]);
 
   return (
     <div className="space-y-6">
