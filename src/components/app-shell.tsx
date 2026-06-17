@@ -47,6 +47,40 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   usePrefetchRoutes(["/dashboard", "/transactions", "/categories"]);
 
+  // Ensure theme button works with vanilla JS handler
+  useEffect(() => {
+    const handleThemeClick = () => {
+      toggle();
+    };
+    
+    // Find and attach listener to theme button
+    const attachListener = () => {
+      const button = document.querySelector('button[title*="modo"]');
+      if (button) {
+        // Use a data attribute to track if listener is attached
+        if (!button.dataset.themeListenerAttached) {
+          button.addEventListener('click', handleThemeClick);
+          button.dataset.themeListenerAttached = 'true';
+        }
+      }
+    };
+    
+    // Attach immediately
+    attachListener();
+    
+    // Also try to attach after a short delay to handle async rendering
+    const timer = setTimeout(attachListener, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      const button = document.querySelector('button[title*="modo"]');
+      if (button) {
+        button.removeEventListener('click', handleThemeClick);
+        delete button.dataset.themeListenerAttached;
+      }
+    };
+  }, [toggle]);
+
   useEffect(() => {
     let mounted = true;
     const init = async () => {

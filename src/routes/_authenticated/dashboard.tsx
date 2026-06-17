@@ -146,16 +146,23 @@ function Dashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Gastos por categoria (mês atual)">
-          {isLoading ? <Empty>Carregando…</Empty> : pieData.length === 0 ? <Empty>Sem despesas este mês</Empty> : (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                  {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                </Pie>
-                <Tooltip content={<PieTooltip />} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          {isLoading ? <Empty>Carregando…</Empty> : (
+            <div className="w-full h-[280px] flex items-center justify-center rounded-lg border border-border/50 bg-card/50 relative">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                    {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                  </Pie>
+                  {pieData.length > 0 && <Tooltip content={<PieTooltip />} />}
+                  {pieData.length > 0 && <Legend />}
+                </PieChart>
+              </ResponsiveContainer>
+              {pieData.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center text-center text-muted-foreground pointer-events-none">
+                  <p className="text-sm">Sem despesas este mês</p>
+                </div>
+              )}
+            </div>
           )}
         </Card>
 
@@ -164,7 +171,7 @@ function Dashboard() {
             <BarChart data={months}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={12} />
-              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} fontSize={12} />
+              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} fontSize={12} />
               <Tooltip content={<BarTooltip />} />
               <Legend />
               <Bar dataKey="income" name="Receitas" fill="var(--chart-2)" radius={[6, 6, 0, 0]} />
@@ -178,7 +185,7 @@ function Dashboard() {
             <LineChart data={balanceSeries}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={12} />
-              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} fontSize={12} />
+              <YAxis stroke="var(--muted-foreground)" tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} fontSize={12} />
               <Tooltip content={<LineTooltip />} />
               <Line type="monotone" dataKey="saldo" name="Saldo" stroke="var(--chart-1)" strokeWidth={3} dot={{ r: 5 }} />
             </LineChart>

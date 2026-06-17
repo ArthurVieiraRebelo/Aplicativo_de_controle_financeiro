@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { usePrefetchRoutes } from "@/hooks/use-prefetch-routes";
+import { useTheme } from "@/lib/theme";
 import { toast } from "sonner";
-import { Wallet, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react";
+import { Wallet, Mail, Lock, User as UserIcon, Loader2, Sun, Moon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -59,8 +60,33 @@ function AuthPage() {
   const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
   const navigate = useNavigate();
   const router = useRouter();
+  const { theme, toggle } = useTheme();
 
   usePrefetchRoutes(["/dashboard", "/transactions", "/categories"]);
+
+  // Ensure theme button works with vanilla JS handler (fallback for React event delegation issues)
+  useEffect(() => {
+    const handleThemeClick = () => {
+      // Read current theme from localStorage (source of truth)
+      const currentTheme = localStorage.getItem('fc-theme') as 'light' | 'dark' || 'dark';
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      
+      // Update localStorage
+      localStorage.setItem('fc-theme', newTheme);
+      
+      // Update DOM
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
+      
+      // Trigger React state update
+      toggle();
+    };
+    
+    const button = document.querySelector('button[title*="modo"]');
+    if (button) {
+      button.addEventListener('click', handleThemeClick);
+      return () => button.removeEventListener('click', handleThemeClick);
+    }
+  }, [toggle]);
 
   useEffect(() => {
     let mounted = true;
@@ -156,6 +182,13 @@ function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      <button
+        onClick={toggle}
+        className="absolute top-4 right-4 p-2 rounded-lg hover:bg-accent transition-colors text-foreground"
+        title={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+      >
+        {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+      </button>
       <div className="pointer-events-none absolute -top-40 -right-40 h-96 w-96 rounded-full bg-primary/30 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-40 -left-40 h-96 w-96 rounded-full bg-primary-glow/20 blur-3xl" />
 

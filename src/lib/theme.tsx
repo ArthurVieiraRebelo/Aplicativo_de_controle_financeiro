@@ -1,26 +1,44 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 
 type Theme = "light" | "dark";
 const ThemeCtx = createContext<{ theme: Theme; toggle: () => void }>({ theme: "dark", toggle: () => { } });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  // Initialize with localStorage on first render to avoid hydration mismatch
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "dark";
-    return (localStorage.getItem("fc-theme") as Theme) || "dark";
-  });
+  const [theme, setTheme] = useState<Theme>("dark");
 
-  // Single effect to handle both DOM updates and storage
+  // Initialize theme from DOM state on mount
   useEffect(() => {
-    if (typeof document === "undefined") return;
-    document.documentElement.classList.toggle("dark", theme === "dark");
-    try {
-      localStorage.setItem("fc-theme", theme);
-    } catch { }
+    const hasDark = document.documentElement.classList.contains("dark");
+    const newTheme = hasDark ? "dark" : "light";
+    setTheme(newTheme);
+    localStorage.setItem("fc-theme", newTheme);
+  }, []);
+
+  // Listen for changes to the dark class on documentElement
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const hasDark = document.documentElement.classList.contains("dark");
+      const newTheme = hasDark ? "dark" : "light";
+      setTheme(newTheme);
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  const toggle = useCallback(() => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    document.documentElement.classList.toggle("dark", newTheme === "dark");
+    localStorage.setItem("fc-theme", newTheme);
   }, [theme]);
 
   return (
-    <ThemeCtx.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>
+    <ThemeCtx.Provider value={{ theme, toggle }}>
       {children}
     </ThemeCtx.Provider>
   );
