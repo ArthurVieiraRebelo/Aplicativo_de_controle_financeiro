@@ -56,3 +56,19 @@ export const setUserRole = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message)
     return { success: true }
   })
+
+export const deleteUser = createServerFn({ method: "POST" })
+  .middleware([requireAdminAuth])
+  .validator((input: unknown) => {
+    const d = input as { userId: string }
+    if (!d?.userId) throw new Error("userId é obrigatório")
+    return d
+  })
+  .handler(async ({ context, data }) => {
+    const { supabase } = context
+    const { error } = await supabase.rpc("admin_delete_user", {
+      target_user_id: data.userId,
+    })
+    if (error) throw new Error(error.message)
+    return { success: true }
+  })

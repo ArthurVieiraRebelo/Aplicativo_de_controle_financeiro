@@ -1,15 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Shield,
   ShieldOff,
+  Trash2,
   Search,
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
 } from "lucide-react"
-import { getAdminUsers, setUserRole, type AdminUser } from "@/lib/admin.functions"
+import { getAdminUsers, setUserRole, deleteUser, type AdminUser } from "@/lib/admin.functions"
+import { supabase } from "@/integrations/supabase/client"
 import { formatBRL } from "@/lib/format"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -27,7 +29,7 @@ function RoleBadge({ role }: { role: "user" | "admin" }) {
       className={cn(
         "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium",
         role === "admin"
-          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+          ? "bg-primary/10 text-primary dark:bg-primary/20"
           : "bg-secondary text-secondary-foreground",
       )}
     >
@@ -41,9 +43,16 @@ export default function AdminUsers() {
   const [search, setSearch] = useState("")
   const [sortKey, setSortKey] = useState<SortKey>("created_at")
   const [sortDir, setSortDir] = useState<SortDir>("desc")
-  const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<{ id: string; action: "role" | "delete" } | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   const qc = useQueryClient()
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setCurrentUserId(data.session?.user.id ?? null)
+    })
+  }, [])
 
   // attachSupabaseAuth (global functionMiddleware em start.ts) injeta o token
   // automaticamente — sem estado de token ou headers manuais necessários.
@@ -53,18 +62,32 @@ export default function AdminUsers() {
     staleTime: 60_000,
   })
 
-  const mutation = useMutation({
+  const roleMutation = useMutation({
     mutationFn: (vars: { userId: string; role: "user" | "admin" }) =>
       setUserRole({ data: vars }),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["admin-users"] })
       qc.invalidateQueries({ queryKey: ["admin-stats"] })
       toast.success(vars.role === "admin" ? "Usuário promovido a admin" : "Admin rebaixado a usuário")
-      setConfirmId(null)
+      setConfirm(null)
     },
     onError: (err: Error) => {
       toast.error(err.message)
-      setConfirmId(null)
+      setConfirm(null)
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (vars: { userId: string }) => deleteUser({ data: vars }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin-users"] })
+      qc.invalidateQueries({ queryKey: ["admin-stats"] })
+      toast.success("Usuário excluído")
+      setConfirm(null)
+    },
+    onError: (err: Error) => {
+      toast.error(err.message)
+      setConfirm(null)
     },
   })
 
@@ -182,10 +205,13 @@ export default function AdminUsers() {
                   <UserRow
                     key={u.id}
                     user={u}
-                    isPending={mutation.isPending && mutation.variables?.userId === u.id}
-                    confirmId={confirmId}
-                    setConfirmId={setConfirmId}
-                    onRoleChange={(role) => mutation.mutate({ userId: u.id, role })}
+                    isSelf={u.id === currentUserId}
+                    isRolePending={roleMutation.isPending && roleMutation.variables?.userId === u.id}
+                    isDeletePending={deleteMutation.isPending && deleteMutation.variables?.userId === u.id}
+                    confirm={confirm}
+                    setConfirm={setConfirm}
+                    onRoleChange={(role) => roleMutation.mutate({ userId: u.id, role })}
+                    onDelete={() => deleteMutation.mutate({ userId: u.id })}
                   />
                 ))
               )}
@@ -199,18 +225,25 @@ export default function AdminUsers() {
 
 function UserRow({
   user: u,
-  isPending,
-  confirmId,
-  setConfirmId,
+  isSelf,
+  isRolePending,
+  isDeletePending,
+  confirm,
+  setConfirm,
   onRoleChange,
+  onDelete,
 }: {
   user: AdminUser
-  isPending: boolean
-  confirmId: string | null
-  setConfirmId: (id: string | null) => void
+  isSelf: boolean
+  isRolePending: boolean
+  isDeletePending: boolean
+  confirm: { id: string; action: "role" | "delete" } | null
+  setConfirm: (c: { id: string; action: "role" | "delete" } | null) => void
   onRoleChange: (role: "user" | "admin") => void
+  onDelete: () => void
 }) {
-  const isConfirming = confirmId === u.id
+  const confirmingRole = confirm?.id === u.id && confirm.action === "role"
+  const confirmingDelete = confirm?.id === u.id && confirm.action === "delete"
   const nextRole = u.role === "admin" ? "user" : "admin"
 
   return (
@@ -251,49 +284,75 @@ function UserRow({
         <RoleBadge role={u.role} />
       </td>
 
-      {/* Action */}
+      {/* Actions */}
       <td className="px-4 py-3 text-center">
-        {isConfirming ? (
+        {confirmingRole ? (
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => onRoleChange(nextRole)}
-              disabled={isPending}
+              disabled={isRolePending}
               className={cn(
                 "rounded-md px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50",
                 nextRole === "admin"
-                  ? "bg-amber-500 text-white hover:bg-amber-600"
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90"
                   : "bg-destructive text-destructive-foreground hover:bg-destructive/80",
               )}
             >
-              {isPending ? "…" : "Confirmar"}
+              {isRolePending ? "…" : "Confirmar"}
             </button>
             <button
-              onClick={() => setConfirmId(null)}
+              onClick={() => setConfirm(null)}
+              className="rounded-md px-2.5 py-1 text-xs font-medium bg-secondary hover:bg-secondary/70 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        ) : confirmingDelete ? (
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={onDelete}
+              disabled={isDeletePending}
+              className="rounded-md px-2.5 py-1 text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/80 transition-colors disabled:opacity-50"
+            >
+              {isDeletePending ? "…" : "Excluir definitivamente"}
+            </button>
+            <button
+              onClick={() => setConfirm(null)}
               className="rounded-md px-2.5 py-1 text-xs font-medium bg-secondary hover:bg-secondary/70 transition-colors"
             >
               Cancelar
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => setConfirmId(u.id)}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border transition-colors",
-              u.role === "admin"
-                ? "border-destructive/30 text-destructive hover:bg-destructive/10"
-                : "border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-900/20",
-            )}
-          >
-            {u.role === "admin" ? (
-              <>
-                <ShieldOff className="h-3 w-3" /> Revogar admin
-              </>
-            ) : (
-              <>
-                <Shield className="h-3 w-3" /> Tornar admin
-              </>
-            )}
-          </button>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setConfirm({ id: u.id, action: "role" })}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium border transition-colors",
+                u.role === "admin"
+                  ? "border-destructive/30 text-destructive hover:bg-destructive/10"
+                  : "border-primary/30 text-primary hover:bg-primary/10 dark:border-primary/40",
+              )}
+            >
+              {u.role === "admin" ? (
+                <>
+                  <ShieldOff className="h-3 w-3" /> Revogar admin
+                </>
+              ) : (
+                <>
+                  <Shield className="h-3 w-3" /> Tornar admin
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => setConfirm({ id: u.id, action: "delete" })}
+              disabled={isSelf}
+              title={isSelf ? "Você não pode excluir sua própria conta" : "Excluir usuário"}
+              className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="h-3 w-3" /> Excluir
+            </button>
+          </div>
         )}
       </td>
     </tr>

@@ -215,6 +215,10 @@ export type Database = {
         Args: { target_user_id: string; new_role: string }
         Returns: undefined
       }
+      admin_delete_user: {
+        Args: { target_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       payment_method: "cash" | "debit" | "credit" | "pix" | "transfer" | "other"

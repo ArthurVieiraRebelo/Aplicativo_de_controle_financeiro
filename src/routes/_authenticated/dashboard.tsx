@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL, monthLabel } from "@/lib/format";
 import {
   TrendingUp, TrendingDown, Wallet, PiggyBank, ArrowUpRight, ArrowDownRight,
+  PieChart as PieChartIcon,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -146,22 +147,34 @@ function Dashboard() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Gastos por categoria (mês atual)">
-          {isLoading ? <Empty>Carregando…</Empty> : (
+          {isLoading ? (
+            <Empty>Carregando…</Empty>
+          ) : pieData.length === 0 ? (
+            <div className="flex h-[280px] flex-col items-center justify-center gap-3 rounded-lg border border-border/50 bg-card/50 text-center">
+              <span className="grid h-14 w-14 place-items-center rounded-full bg-primary/10 text-primary">
+                <PieChartIcon className="h-7 w-7" />
+              </span>
+              <div>
+                <p className="text-sm font-medium">Sem despesas este mês</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Registre uma despesa para ver a distribuição por categoria.
+                </p>
+              </div>
+              <Link to="/transactions" className="text-xs font-medium text-primary hover:underline">
+                Adicionar despesa
+              </Link>
+            </div>
+          ) : (
             <div className="w-full h-[280px] flex items-center justify-center rounded-lg border border-border/50 bg-card/50 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
                     {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
                   </Pie>
-                  {pieData.length > 0 && <Tooltip content={<PieTooltip />} />}
-                  {pieData.length > 0 && <Legend />}
+                  <Tooltip content={<PieTooltip />} />
+                  <Legend />
                 </PieChart>
               </ResponsiveContainer>
-              {pieData.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center text-center text-muted-foreground pointer-events-none">
-                  <p className="text-sm">Sem despesas este mês</p>
-                </div>
-              )}
             </div>
           )}
         </Card>

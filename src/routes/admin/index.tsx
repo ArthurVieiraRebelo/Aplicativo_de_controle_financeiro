@@ -49,7 +49,7 @@ function RoleBadge({ role }: { role: "user" | "admin" }) {
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
         role === "admin"
-          ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+          ? "bg-primary/10 text-primary dark:bg-primary/20"
           : "bg-secondary text-secondary-foreground"
       }`}
     >
@@ -62,13 +62,13 @@ function RoleBadge({ role }: { role: "user" | "admin" }) {
 export default function AdminDashboard() {
   // attachSupabaseAuth (global functionMiddleware em start.ts) injeta o token
   // automaticamente em todas as chamadas de server function — sem headers manuais.
-  const { data: stats, isLoading: loadingStats } = useQuery({
+  const { data: stats, isLoading: loadingStats, error: statsError } = useQuery({
     queryKey: ["admin-stats"],
     queryFn: () => getAdminStats(),
     staleTime: 60_000,
   })
 
-  const { data: users, isLoading: loadingUsers } = useQuery({
+  const { data: users, isLoading: loadingUsers, error: usersError } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => getAdminUsers(),
     staleTime: 60_000,
@@ -79,6 +79,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      {(statsError || usersError) && (
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+          <p className="font-semibold">Erro ao carregar dados do painel:</p>
+          {statsError && <p>stats: {String((statsError as Error).message)}</p>}
+          {usersError && <p>users: {String((usersError as Error).message)}</p>}
+        </div>
+      )}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Dashboard Administrativo</h1>
@@ -129,7 +136,7 @@ export default function AdminDashboard() {
           label="Novos usuários (mês)"
           value={loadingStats ? "…" : (stats?.users_this_month ?? 0).toLocaleString("pt-BR")}
           icon={UserPlus}
-          color="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+          color="bg-primary/10 text-primary dark:bg-primary/20"
         />
       </div>
 

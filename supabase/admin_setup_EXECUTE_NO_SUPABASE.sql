@@ -233,11 +233,11 @@ REVOKE EXECUTE ON FUNCTION public.set_user_role(uuid, public.user_role) FROM PUB
 GRANT  EXECUTE ON FUNCTION public.set_user_role(uuid, public.user_role) TO authenticated;
 
 -- ════════════════════════════════════════════════════════════
--- PROMOVER O PRIMEIRO USUÁRIO A ADMIN (= você)
+-- PROMOVER admin@gmail.com A ADMIN
 -- ════════════════════════════════════════════════════════════
 UPDATE public.profiles
 SET role = 'admin'
-WHERE created_at = (SELECT MIN(created_at) FROM public.profiles);
+WHERE id = (SELECT id FROM auth.users WHERE email = 'admin@gmail.com');
 
 -- Confirma o resultado:
 SELECT p.id, p.full_name, p.role, au.email

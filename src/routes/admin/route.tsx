@@ -52,7 +52,7 @@ function AdminLayout() {
       <aside className="w-64 border-r border-border bg-sidebar flex flex-col fixed inset-y-0 left-0 z-30">
         {/* Brand */}
         <div className="flex items-center gap-3 px-6 py-6 border-b border-sidebar-border">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-amber-500 text-white shadow-md">
+          <span className="grid h-10 w-10 place-items-center rounded-xl gradient-primary text-primary-foreground shadow-md">
             <Shield className="h-5 w-5" />
           </span>
           <div>
@@ -75,7 +75,7 @@ function AdminLayout() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-amber-500 text-white shadow-sm"
+                    ? "gradient-primary text-primary-foreground shadow-sm"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                 )}
               >
