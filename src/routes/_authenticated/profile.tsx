@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Trash2, User as UserIcon } from "lucide-react";
@@ -101,7 +102,7 @@ function ProfilePage() {
 
       <form onSubmit={changePassword} className="gradient-card border border-border rounded-2xl p-5 shadow-soft space-y-3">
         <h3 className="font-semibold">Alterar senha</h3>
-        <div className="grid gap-1.5"><Label>Nova senha (mín. 8)</Label><Input type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+        <div className="grid gap-1.5"><Label>Nova senha (mín. 8)</Label><PasswordInput minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} /></div>
         <Button type="submit" disabled={loading || !password} className="gradient-primary text-primary-foreground shadow-glow">Atualizar senha</Button>
       </form>
 

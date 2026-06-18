@@ -43,7 +43,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const prefetchRoute = usePrefetchRoute();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState<string>("");
-  const [isAdmin, setIsAdmin] = useState(false);
 
   usePrefetchRoutes(["/dashboard", "/transactions", "/categories"]);
 
@@ -87,13 +86,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!mounted || !session?.user) return;
       setEmail(session.user.email ?? "");
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .maybeSingle();
-      if (mounted) setIsAdmin(profile?.role === "admin");
     };
     init();
     return () => { mounted = false; };
@@ -161,16 +153,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
 
           <div className="border-t border-sidebar-border p-3 space-y-2">
-            {/* Admin link — only for admins */}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
-              >
-                <Shield className="h-4 w-4" />
-                Painel Admin
-              </Link>
-            )}
+            <Link
+              to="/admin"
+              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 transition-colors"
+            >
+              <Shield className="h-4 w-4" />
+              Painel Admin
+            </Link>
 
             <button
               onClick={toggle}

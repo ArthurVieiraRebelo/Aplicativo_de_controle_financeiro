@@ -1,10 +1,20 @@
 import { createFileRoute, Link, Outlet, redirect } from "@tanstack/react-router"
 import { useRouterState, useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { LayoutDashboard, Users, Shield, ArrowLeft, LogOut } from "lucide-react"
+import { useState } from "react"
+import { LayoutDashboard, Users, Shield, ArrowLeft, LogOut, Lock } from "lucide-react"
 import { supabase } from "@/integrations/supabase/client"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { PasswordInput } from "@/components/ui/password-input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+
+// Gate temporário: o painel é aberto a qualquer usuário logado, protegido
+// só por esta senha local (sem checagem de role no backend). Ver migration
+// 20260618130000_admin_open_access.sql.
+const ADMIN_PASSWORD = "admin123"
+const ADMIN_UNLOCK_KEY = "fincontrol_admin_unlocked"
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -12,21 +22,45 @@ export const Route = createFileRoute("/admin")({
     if (typeof window === "undefined") return; // SSR: sessão é client-only
     const { data: { session } } = await supabase.auth.getSession()
     if (!session?.user) throw redirect({ to: "/auth" })
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", session.user.id)
-      .maybeSingle()
-
-    if (!profile || profile.role !== "admin") {
-      throw redirect({ to: "/dashboard" })
-    }
-
     return { user: session.user }
   },
   component: AdminLayout,
 })
+
+function AdminPasswordGate({ onUnlock }: { onUnlock: () => void }) {
+  const [password, setPassword] = useState("")
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem(ADMIN_UNLOCK_KEY, "true")
+      onUnlock()
+    } else {
+      toast.error("Senha de administrador incorreta")
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <form onSubmit={submit} className="w-full max-w-sm gradient-card border border-border rounded-2xl shadow-soft p-6 space-y-4 text-center">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl gradient-primary text-primary-foreground shadow-glow">
+          <Lock className="h-6 w-6" />
+        </span>
+        <div>
+          <h1 className="text-xl font-bold">Acesso restrito</h1>
+          <p className="text-sm text-muted-foreground mt-1">Informe a senha de administrador para continuar</p>
+        </div>
+        <div className="space-y-1.5 text-left">
+          <Label htmlFor="admin-password">Senha de administrador</Label>
+          <PasswordInput id="admin-password" autoFocus value={password} onChange={(e) => setPassword(e.target.value)} />
+        </div>
+        <Button type="submit" className="w-full gradient-primary text-primary-foreground shadow-glow">
+          Entrar
+        </Button>
+      </form>
+    </div>
+  )
+}
 
 const adminNav = [
   { to: "/admin/", label: "Dashboard", icon: LayoutDashboard },
@@ -37,6 +71,7 @@ function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(ADMIN_UNLOCK_KEY) === "true")
 
   const signOut = async () => {
     await queryClient.cancelQueries()
@@ -44,6 +79,10 @@ function AdminLayout() {
     await supabase.auth.signOut()
     toast.success("Sessão encerrada")
     navigate({ to: "/auth", replace: true })
+  }
+
+  if (!unlocked) {
+    return <AdminPasswordGate onUnlock={() => setUnlocked(true)} />
   }
 
   return (

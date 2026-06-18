@@ -5,10 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { usePrefetchRoutes } from "@/hooks/use-prefetch-routes";
 import { useTheme } from "@/lib/theme";
 import { toast } from "sonner";
-import { Wallet, Mail, Lock, User as UserIcon, Loader2, Sun, Moon } from "lucide-react";
+import { Wallet, Mail, User as UserIcon, IdCard, Loader2, Sun, Moon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { formatCpf, cpfDigits } from "@/lib/cpf";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -25,6 +27,7 @@ type Mode = "signin" | "signup" | "forgot";
 const signupSchema = z
   .object({
     name: z.string().trim().min(2, "Informe seu nome completo").max(80),
+    cpf: z.string().refine((v) => cpfDigits(v).length === 11, "CPF inválido. Informe os 11 dígitos."),
     email: z.string().trim().email("E-mail inválido").max(255),
     password: z.string().min(8, "Mínimo 8 caracteres").max(72),
     confirm: z.string(),
@@ -51,13 +54,15 @@ function translateAuthError(msg: string): string {
     return "E-mail inválido.";
   if (m.includes("password") && (m.includes("short") || m.includes("length")))
     return "Senha muito curta. Mínimo 8 caracteres.";
+  if (m.includes("profiles_cpf_key") || (m.includes("cpf") && m.includes("duplicate")))
+    return "Este CPF já está cadastrado em outra conta.";
   return msg || "Erro inesperado. Tente novamente.";
 }
 
 function AuthPage() {
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", confirm: "" });
+  const [form, setForm] = useState({ name: "", cpf: "", email: "", password: "", confirm: "" });
   const navigate = useNavigate();
   const router = useRouter();
   const { theme, toggle } = useTheme();
@@ -125,10 +130,19 @@ function AuthPage() {
           toast.error(parsed.error.issues[0].message);
           return;
         }
+        const cpf = cpfDigits(form.cpf);
+        const { data: existingUserId } = await supabase.rpc("get_user_id_by_cpf", { p_cpf: cpf });
+        if (existingUserId) {
+          toast.error("Este CPF já está cadastrado em outra conta.");
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email: form.email,
           password: form.password,
-          options: { emailRedirectTo: window.location.origin + "/auth", data: { full_name: form.name } },
+          options: {
+            emailRedirectTo: window.location.origin + "/auth",
+            data: { full_name: form.name, cpf },
+          },
         });
         if (error) {
           const isAlreadyRegistered =
@@ -156,26 +170,6 @@ function AuthPage() {
     } catch (err) {
       toast.error(translateAuthError(err instanceof Error ? err.message : ""));
     } finally {
-      setLoading(false);
-    }
-  };
-
-  // Usa OAuth nativo do Supabase — funciona em localhost e em produção
-  // sem depender do broker /~oauth/initiate da Lovable (só disponível no platform deles)
-  const google = async () => {
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin + "/auth" },
-      });
-      if (error) {
-        toast.error("Não foi possível entrar com Google: " + error.message);
-        setLoading(false);
-      }
-      // Se não erro: browser redireciona para Google → retorna para /auth → onAuthStateChange navega
-    } catch {
-      toast.error("Não foi possível entrar com Google");
       setLoading(false);
     }
   };
@@ -226,6 +220,16 @@ function AuthPage() {
               </div>
             )}
 
+            {mode === "signup" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="cpf">CPF</Label>
+                <div className="relative">
+                  <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="cpf" required inputMode="numeric" maxLength={14} value={form.cpf} onChange={(e) => setForm({ ...form, cpf: formatCpf(e.target.value) })} className="pl-9" placeholder="000.000.000-00" />
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="email">E-mail</Label>
               <div className="relative">
@@ -237,20 +241,14 @@ function AuthPage() {
             {mode !== "forgot" && (
               <div className="space-y-1.5">
                 <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="password" type="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="pl-9" placeholder="Mínimo 8 caracteres" />
-                </div>
+                <PasswordInput id="password" required minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Mínimo 8 caracteres" />
               </div>
             )}
 
             {mode === "signup" && (
               <div className="space-y-1.5">
                 <Label htmlFor="confirm">Confirmar senha</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="confirm" type="password" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} className="pl-9" />
-                </div>
+                <PasswordInput id="confirm" required value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} />
               </div>
             )}
 
@@ -262,31 +260,12 @@ function AuthPage() {
             </Button>
           </form>
 
-          {mode !== "forgot" && (
-            <>
-              <div className="my-5 flex items-center gap-3">
-                <span className="h-px bg-border flex-1" />
-                <span className="text-xs text-muted-foreground">ou</span>
-                <span className="h-px bg-border flex-1" />
-              </div>
-              <Button variant="outline" onClick={google} disabled={loading} className="w-full">
-                <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.07H2.18A11 11 0 0 0 1 12c0 1.77.42 3.45 1.18 4.93l3.66-2.83z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38z" />
-                </svg>
-                Continuar com Google
-              </Button>
-            </>
-          )}
-
           <div className="mt-6 text-center text-sm text-muted-foreground">
             {mode === "signin" && (
               <>
-                <button onClick={() => setMode("forgot")} className="text-primary hover:underline">
+                <Link to="/forgot-password" className="text-primary hover:underline">
                   Esqueci minha senha
-                </button>
+                </Link>
                 <div className="mt-2">
                   Não tem conta?{" "}
                   <button onClick={() => setMode("signup")} className="text-primary font-medium hover:underline">

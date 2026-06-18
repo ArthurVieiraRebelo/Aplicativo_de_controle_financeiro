@@ -124,6 +124,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          cpf: string | null
           created_at: string
           full_name: string | null
           id: string
@@ -132,6 +133,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string
           full_name?: string | null
           id: string
@@ -140,6 +142,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          cpf?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
@@ -218,6 +221,10 @@ export type Database = {
       admin_delete_user: {
         Args: { target_user_id: string }
         Returns: undefined
+      }
+      get_user_id_by_cpf: {
+        Args: { p_cpf: string }
+        Returns: string
       }
     }
     Enums: {

@@ -1,1 +1,4 @@
 project_id = "bvjbzkxvwxbljvkxyiaa"
+
+[functions.reset-password-by-cpf]
+verify_jwt = false

@@ -2,10 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Loader2, Lock } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/reset-password")({
   component: ResetPasswordPage,
@@ -34,10 +34,7 @@ function ResetPasswordPage() {
         <p className="text-sm text-muted-foreground">Defina sua nova senha de acesso.</p>
         <div className="space-y-1.5">
           <Label>Senha</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input type="password" required minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} className="pl-9" />
-          </div>
+          <PasswordInput required minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} />
         </div>
         <Button type="submit" disabled={loading} className="w-full gradient-primary text-primary-foreground shadow-glow">
           {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
