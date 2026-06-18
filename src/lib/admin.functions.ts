@@ -41,7 +41,7 @@ export const getAdminUsers = createServerFn({ method: "GET" })
 
 export const setUserRole = createServerFn({ method: "POST" })
   .middleware([requireAdminAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const d = input as { userId: string; role: "user" | "admin" }
     if (!d?.userId || !d?.role) throw new Error("userId e role são obrigatórios")
     if (d.role !== "user" && d.role !== "admin") throw new Error("role inválido")
@@ -59,7 +59,7 @@ export const setUserRole = createServerFn({ method: "POST" })
 
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireAdminAuth])
-  .validator((input: unknown) => {
+  .inputValidator((input: unknown) => {
     const d = input as { userId: string }
     if (!d?.userId) throw new Error("userId é obrigatório")
     return d
