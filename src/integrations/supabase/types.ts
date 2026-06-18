@@ -203,20 +203,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_admin_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_admin_users: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      set_user_role: {
-        Args: { target_user_id: string; new_role: string }
-        Returns: undefined
-      }
       admin_delete_user: {
         Args: { target_user_id: string }
+        Returns: undefined
+      }
+      get_admin_stats: { Args: never; Returns: Json }
+      get_admin_users: { Args: never; Returns: Json }
+      is_admin: { Args: never; Returns: boolean }
+      set_user_role: {
+        Args: {
+          new_role: Database["public"]["Enums"]["user_role"]
+          target_user_id: string
+        }
         Returns: undefined
       }
     }
