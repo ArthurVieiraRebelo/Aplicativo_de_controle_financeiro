@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     
     return () => {
       clearTimeout(timer);
-      const button = document.querySelector('button[title*="modo"]');
+      const button = document.querySelector<HTMLButtonElement>('button[title*="modo"]');
       if (button) {
         button.removeEventListener('click', handleThemeClick);
         delete button.dataset.themeListenerAttached;
