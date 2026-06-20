@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     
     // Find and attach listener to theme button
     const attachListener = () => {
-      const button = document.querySelector('button[title*="modo"]');
+      const button = document.querySelector<HTMLButtonElement>('button[title*="modo"]');
       if (button) {
         // Use a data attribute to track if listener is attached
         if (!button.dataset.themeListenerAttached) {
@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     
     return () => {
       clearTimeout(timer);
-      const button = document.querySelector('button[title*="modo"]');
+      const button = document.querySelector<HTMLButtonElement>('button[title*="modo"]');
       if (button) {
         button.removeEventListener('click', handleThemeClick);
         delete button.dataset.themeListenerAttached;
