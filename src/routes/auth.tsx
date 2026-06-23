@@ -160,20 +160,21 @@ function AuthPage() {
     }
   };
 
-  // Usa OAuth nativo do Supabase — funciona em localhost e em produção
-  // sem depender do broker /~oauth/initiate da Lovable (só disponível no platform deles)
+  // Usa o broker gerenciado pela Lovable Cloud para Google OAuth
   const google = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: window.location.origin + "/auth" },
+      const { lovable } = await import("@/integrations/lovable");
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
       });
-      if (error) {
-        toast.error("Não foi possível entrar com Google: " + error.message);
+      if (result.error) {
+        toast.error("Não foi possível entrar com Google: " + result.error.message);
         setLoading(false);
+        return;
       }
-      // Se não erro: browser redireciona para Google → retorna para /auth → onAuthStateChange navega
+      if (result.redirected) return;
+      // Sessão definida — onAuthStateChange navega para /dashboard
     } catch {
       toast.error("Não foi possível entrar com Google");
       setLoading(false);
