@@ -165,16 +165,33 @@ function Dashboard() {
               </Link>
             </div>
           ) : (
-            <div className="w-full h-[280px] flex items-center justify-center rounded-lg border border-border/50 bg-card/50 relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                    {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
-                  </Pie>
-                  <Tooltip content={<PieTooltip />} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="w-full rounded-lg border border-border/50 bg-card/50 p-3 flex flex-col sm:flex-row items-center gap-3">
+              <div className="w-full sm:w-1/2 h-[240px] shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={2}>
+                      {pieData.map((d, i) => <Cell key={i} fill={d.color} />)}
+                    </Pie>
+                    <Tooltip content={<PieTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <ul className="w-full sm:w-1/2 max-h-[240px] overflow-y-auto space-y-1.5 pr-1">
+                {(() => {
+                  const total = pieData.reduce((s, d) => s + d.value, 0) || 1;
+                  return pieData.map((d) => (
+                    <li key={d.name} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="flex items-center gap-2 min-w-0 text-foreground">
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: d.color }} />
+                        <span className="truncate">{d.name}</span>
+                      </span>
+                      <span className="text-muted-foreground tabular-nums shrink-0">
+                        {formatBRL(d.value)} · {((d.value / total) * 100).toFixed(0)}%
+                      </span>
+                    </li>
+                  ));
+                })()}
+              </ul>
             </div>
           )}
         </Card>
